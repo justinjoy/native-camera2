@@ -6,17 +6,16 @@ model {
         buildToolsVersion = '24'
 
         defaultConfig {
-            applicationId    = 'org.freedesktop.nativecamera2'
+            applicationId = 'org.freedesktop.nativecamera2'
             minSdkVersion.apiLevel    = 24
             targetSdkVersion.apiLevel = 24
         }
         ndk {
             platformVersion = 24 
             moduleName = 'native-camera2-jni'
-            toolchain = 'clang'
-            stl        = 'gnustl_static'
+            toolchain  = 'clang'
             cppFlags.addAll(['-std=c++11','-Wall'])
-            ldLibs.addAll(['log', 'camera2ndk'])
+            ldLibs.addAll(['android', 'log', 'camera2ndk'])
         }
         buildTypes {
             release {
