@@ -19,18 +19,33 @@
 #include <jni.h>
 #include <pthread.h>
 
-#include <android/log.h>
 #include <android/native_window_jni.h>
 #include <camera/NdkCameraManager.h>
+
+#include "messages-internal.h"
 
 static ANativeWindow *theNativeWindow;
 
 extern "C" {
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
+                                                                                   jclass clazz);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
+                                                                                   jclass clazz);
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
                                                                                  jclass clazz);
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env,
                                                                                    jclass clazz,
                                                                                    jobject surface);
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
+                                                                                   jclass clazz) {
+    LOGI("Open Camera2\n");
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
+                                                                                    jclass clazz) {
+    LOGI("Close Camera2\n");
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
@@ -45,4 +60,5 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurfa
                                                                                    jclass clazz,
                                                                                    jobject surface) {
     theNativeWindow = ANativeWindow_fromSurface(env, surface);
+    LOGI("Surface is prepared in %p.\n", surface);
 }

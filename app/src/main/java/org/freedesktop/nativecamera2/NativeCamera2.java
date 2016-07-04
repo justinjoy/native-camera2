@@ -29,6 +29,10 @@ public class NativeCamera2 extends Activity {
 
     static final String TAG = "NativeCamera2";
 
+    public static native void openCamera();
+
+    public static native void closeCamera();
+
     public static native void setSurface(Surface surface);
 
     public static native void shutdown();
@@ -52,6 +56,7 @@ public class NativeCamera2 extends Activity {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
                 setSurface(holder.getSurface());
+                openCamera();
             }
 
             @Override
@@ -67,6 +72,7 @@ public class NativeCamera2 extends Activity {
 
     @Override
     protected void onDestroy() {
+        closeCamera();
         shutdown();
         super.onDestroy();
     }
