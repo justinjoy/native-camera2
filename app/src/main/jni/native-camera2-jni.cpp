@@ -23,17 +23,26 @@
 #include <android/native_window_jni.h>
 #include <camera/NdkCameraManager.h>
 
-static ANativeWindow* theNativeWindow;
+static ANativeWindow *theNativeWindow;
 
-void Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env, jclass clazz)
-{
-  if (theNativeWindow != NULL) {
-    ANativeWindow_release(theNativeWindow);
-    theNativeWindow = NULL;
-  }
+extern "C" {
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
+                                                                                 jclass clazz);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env,
+                                                                                   jclass clazz,
+                                                                                   jobject surface);
 }
 
-void Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env, jclass clazz, jobject surface)
-{
-  theNativeWindow = ANativeWindow_fromSurface(env, surface);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
+                                                                                 jclass clazz) {
+    if (theNativeWindow != NULL) {
+        ANativeWindow_release(theNativeWindow);
+        theNativeWindow = NULL;
+    }
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env,
+                                                                                   jclass clazz,
+                                                                                   jobject surface) {
+    theNativeWindow = ANativeWindow_fromSurface(env, surface);
 }
