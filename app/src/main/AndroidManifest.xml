@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.freedesktop.nativecamera2">
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="24" />
     <uses-feature android:name="android.hardware.camera2.full" />
     <uses-feature android:glEsVersion="0x00020000" />
     <uses-permission android:name="android.permission.CAMERA" />

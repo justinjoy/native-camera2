@@ -55,8 +55,8 @@ public class NativeCamera2 extends Activity {
         surfaceHolder.addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
+                Log.v(TAG, "surface created.");
                 setSurface(holder.getSurface());
-                openCamera();
             }
 
             @Override
@@ -68,6 +68,8 @@ public class NativeCamera2 extends Activity {
                 Log.v(TAG, "format=" + format + " w/h : (" + width + ", " + height + ")");
             }
         });
+
+        openCamera();
     }
 
     @Override

@@ -25,6 +25,7 @@
 #include "messages-internal.h"
 
 static ANativeWindow *theNativeWindow;
+static ACameraDevice_StateCallbacks deviceStateCallbacks;
 
 extern "C" {
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
@@ -40,7 +41,44 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurfa
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
                                                                                    jclass clazz) {
-    LOGI("Open Camera2\n");
+    ACameraIdList *cameraIdList = NULL;
+    ACameraMetadata *cameraMetadata = NULL;
+    ACameraDevice *cameraDevice = NULL;
+    const char *selectedCameraId = NULL;
+    camera_status_t camera_status = ACAMERA_OK;
+    ACameraManager *cameraManager = ACameraManager_create();
+
+    camera_status = ACameraManager_getCameraIdList(cameraManager, &cameraIdList);
+    if (camera_status != ACAMERA_OK) {
+        LOGE("Failed to get camera id list (reason: %d)\n", camera_status);
+        return;
+    }
+
+    if (cameraIdList->numCameras < 1) {
+        LOGE("No camera device detected.\n");
+        return;
+    }
+
+    selectedCameraId = cameraIdList->cameraIds[0];
+
+    LOGI("Trying to open Camera2 (id: %s, num of camera : %d)\n", selectedCameraId, cameraIdList->numCameras);
+
+    camera_status = ACameraManager_getCameraCharacteristics(cameraManager, selectedCameraId, &cameraMetadata);
+
+    if (camera_status != ACAMERA_OK) {
+        LOGE("Failed to get camera meta data of ID:%s\n", selectedCameraId);
+    }
+
+    camera_status = ACameraManager_openCamera(cameraManager, selectedCameraId, &deviceStateCallbacks, &cameraDevice);
+
+    if (camera_status != ACAMERA_OK) {
+        LOGE("Failed to open camera device (id: %s)\n", selectedCameraId);
+    }
+
+    ACameraDevice_close(cameraDevice);
+    ACameraMetadata_free(cameraMetadata);
+    ACameraManager_deleteCameraIdList(cameraIdList);
+    ACameraManager_delete(cameraManager);
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
