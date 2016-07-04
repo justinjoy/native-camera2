@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Collabora Ltd.
+ * Copyright (C) 2016, Collabora Ltd.
  *   Author: Justin Kim <justin.kim@collabora.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,17 @@
 #include <android/native_window_jni.h>
 #include <camera/NdkCameraManager.h>
 
+static ANativeWindow* theNativeWindow;
+
+void Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env, jclass clazz)
+{
+  if (theNativeWindow != NULL) {
+    ANativeWindow_release(theNativeWindow);
+    theNativeWindow = NULL;
+  }
+}
+
 void Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env, jclass clazz, jobject surface)
 {
-  ANativeWindow_fromSurface(env, surface);
+  theNativeWindow = ANativeWindow_fromSurface(env, surface);
 }
