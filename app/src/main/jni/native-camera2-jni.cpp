@@ -27,6 +27,8 @@
 #include "messages-internal.h"
 
 static ANativeWindow *theNativeWindow;
+static ACaptureRequest *captureRequest;
+
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
 
 static void camera_device_on_disconnected (void *context, ACameraDevice *device) {
@@ -55,7 +57,6 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
     ACameraMetadata *cameraMetadata = NULL;
     ACameraDevice *cameraDevice = NULL;
     const char *selectedCameraId = NULL;
-    ACaptureRequest *captureRequest = NULL;
     camera_status_t camera_status = ACAMERA_OK;
     ACameraManager *cameraManager = ACameraManager_create();
 
@@ -91,7 +92,6 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
 
     ACameraDevice_createCaptureRequest(cameraDevice, TEMPLATE_PREVIEW, &captureRequest);
 
-    ACaptureRequest_free(captureRequest);
     ACameraDevice_close(cameraDevice);
     ACameraMetadata_free(cameraMetadata);
     ACameraManager_deleteCameraIdList(cameraIdList);
@@ -105,6 +105,11 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCam
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
                                                                                  jclass clazz) {
+    if (captureRequest != NULL) {
+        ACaptureRequest_free(captureRequest);
+        captureRequest = NULL;
+    }
+
     if (theNativeWindow != NULL) {
         ANativeWindow_release(theNativeWindow);
         theNativeWindow = NULL;
@@ -114,6 +119,15 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env,
                                                                                    jclass clazz,
                                                                                    jobject surface) {
+    ACameraOutputTarget *cameraOutputTarget = NULL;
+
     theNativeWindow = ANativeWindow_fromSurface(env, surface);
+
     LOGI("Surface is prepared in %p.\n", surface);
+
+    ACameraOutputTarget_create(theNativeWindow, &cameraOutputTarget);
+
+    ACaptureRequest_addTarget(captureRequest, cameraOutputTarget);
+
+    ACameraOutputTarget_free(cameraOutputTarget);
 }
