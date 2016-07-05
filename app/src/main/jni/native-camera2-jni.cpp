@@ -20,6 +20,8 @@
 #include <pthread.h>
 
 #include <android/native_window_jni.h>
+
+#include <camera/NdkCameraDevice.h>
 #include <camera/NdkCameraManager.h>
 
 #include "messages-internal.h"
@@ -34,7 +36,6 @@ static void camera_device_on_disconnected (void *context, ACameraDevice *device)
 static void camera_device_on_error (void *context, ACameraDevice *device, int error) {
     LOGE("Error(code: %d) on Camera(id: %s).\n", error, ACameraDevice_getId(device));
 }
-
 
 extern "C" {
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
@@ -54,6 +55,7 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
     ACameraMetadata *cameraMetadata = NULL;
     ACameraDevice *cameraDevice = NULL;
     const char *selectedCameraId = NULL;
+    ACaptureRequest *captureRequest = NULL;
     camera_status_t camera_status = ACAMERA_OK;
     ACameraManager *cameraManager = ACameraManager_create();
 
@@ -87,6 +89,9 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
         LOGE("Failed to open camera device (id: %s)\n", selectedCameraId);
     }
 
+    ACameraDevice_createCaptureRequest(cameraDevice, TEMPLATE_PREVIEW, &captureRequest);
+
+    ACaptureRequest_free(captureRequest);
     ACameraDevice_close(cameraDevice);
     ACameraMetadata_free(cameraMetadata);
     ACameraManager_deleteCameraIdList(cameraIdList);
