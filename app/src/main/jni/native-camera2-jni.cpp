@@ -27,6 +27,15 @@
 static ANativeWindow *theNativeWindow;
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
 
+static void camera_device_on_disconnected (void *context, ACameraDevice *device) {
+    LOGI("Camera(id: %s) is diconnected.\n", ACameraDevice_getId(device));
+}
+
+static void camera_device_on_error (void *context, ACameraDevice *device, int error) {
+    LOGE("Error(code: %d) on Camera(id: %s).\n", error, ACameraDevice_getId(device));
+}
+
+
 extern "C" {
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
                                                                                    jclass clazz);
@@ -68,6 +77,9 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
     if (camera_status != ACAMERA_OK) {
         LOGE("Failed to get camera meta data of ID:%s\n", selectedCameraId);
     }
+
+    deviceStateCallbacks.onDisconnected = camera_device_on_disconnected;
+    deviceStateCallbacks.onError = camera_device_on_error;
 
     camera_status = ACameraManager_openCamera(cameraManager, selectedCameraId, &deviceStateCallbacks, &cameraDevice);
 
