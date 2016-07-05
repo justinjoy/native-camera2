@@ -27,9 +27,15 @@
 #include "messages-internal.h"
 
 static ANativeWindow *theNativeWindow;
+static ACameraDevice *cameraDevice;
 static ACaptureRequest *captureRequest;
+static ACameraOutputTarget *cameraOutputTarget;
+static ACaptureSessionOutput *sessionOutput;
+static ACaptureSessionOutputContainer *captureSessionOutputContainer;
+static ACameraCaptureSession *captureSession;
 
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
+static ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks;
 
 static void camera_device_on_disconnected(void *context, ACameraDevice *device) {
     LOGI("Camera(id: %s) is diconnected.\n", ACameraDevice_getId(device));
@@ -38,6 +44,15 @@ static void camera_device_on_disconnected(void *context, ACameraDevice *device) 
 static void camera_device_on_error(void *context, ACameraDevice *device, int error) {
     LOGE("Error(code: %d) on Camera(id: %s).\n", error, ACameraDevice_getId(device));
 }
+
+static void capture_session_on_ready(void *context, ACameraCaptureSession *session) {
+    LOGI("Session is ready.\n");
+}
+
+static void capture_session_on_active(void *context, ACameraCaptureSession *session) {
+    LOGI("Session is activated.\n");
+}
+
 
 extern "C" {
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
@@ -55,7 +70,7 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
                                                                                    jclass clazz) {
     ACameraIdList *cameraIdList = NULL;
     ACameraMetadata *cameraMetadata = NULL;
-    ACameraDevice *cameraDevice = NULL;
+
     const char *selectedCameraId = NULL;
     camera_status_t camera_status = ACAMERA_OK;
     ACameraManager *cameraManager = ACameraManager_create();
@@ -93,27 +108,50 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
         LOGE("Failed to open camera device (id: %s)\n", selectedCameraId);
     }
 
-    ACameraDevice_createCaptureRequest(cameraDevice, TEMPLATE_PREVIEW, &captureRequest);
+    camera_status = ACameraDevice_createCaptureRequest(cameraDevice, TEMPLATE_PREVIEW,
+                                                       &captureRequest);
 
-    ACameraDevice_close(cameraDevice);
-    ACameraMetadata_free(cameraMetadata);
-    ACameraManager_deleteCameraIdList(cameraIdList);
-    ACameraManager_delete(cameraManager);
+    if (camera_status != ACAMERA_OK) {
+        LOGE("Failed to create preview capture request (id: %s)\n", selectedCameraId);
+    }
+
+    ACaptureSessionOutputContainer_create(&captureSessionOutputContainer);
+
+    //ACameraMetadata_free(cameraMetadata);
+    //ACameraManager_deleteCameraIdList(cameraIdList);
+    //ACameraManager_delete(cameraManager);
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
                                                                                     jclass clazz) {
+    camera_status_t camera_status = ACAMERA_OK;
+
     if (captureRequest != NULL) {
         ACaptureRequest_free(captureRequest);
         captureRequest = NULL;
     }
+
+    if (cameraOutputTarget != NULL) {
+        ACameraOutputTarget_free(cameraOutputTarget);
+        cameraOutputTarget = NULL;
+    }
+
+    camera_status = ACameraDevice_close(cameraDevice);
+    if (camera_status != ACAMERA_OK) {
+        LOGE("Failed to close CameraDevice.\n");
+    }
+
+    if (captureSessionOutputContainer != NULL) {
+        ACaptureSessionOutputContainer_free(captureSessionOutputContainer);
+        captureSessionOutputContainer = NULL;
+    }
+
     LOGI("Close Camera2\n");
 
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
                                                                                  jclass clazz) {
-
 
     if (theNativeWindow != NULL) {
         ANativeWindow_release(theNativeWindow);
@@ -124,15 +162,32 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env,
                                                                                    jclass clazz,
                                                                                    jobject surface) {
-    ACameraOutputTarget *cameraOutputTarget = NULL;
-
     theNativeWindow = ANativeWindow_fromSurface(env, surface);
 
     LOGI("Surface is prepared in %p.\n", surface);
 
-    ACameraOutputTarget_create(theNativeWindow, &cameraOutputTarget);
+    if (cameraOutputTarget != NULL) {
+        ACameraOutputTarget_free(cameraOutputTarget);
+        cameraOutputTarget = NULL;
+    }
 
+    ACameraOutputTarget_create(theNativeWindow, &cameraOutputTarget);
     ACaptureRequest_addTarget(captureRequest, cameraOutputTarget);
 
-    ACameraOutputTarget_free(cameraOutputTarget);
+    if (sessionOutput != NULL) {
+        ACaptureSessionOutputContainer_remove(captureSessionOutputContainer, sessionOutput);
+        ACaptureSessionOutput_free(sessionOutput);
+        sessionOutput = NULL;
+    }
+
+    ACaptureSessionOutput_create(theNativeWindow, &sessionOutput);
+    ACaptureSessionOutputContainer_add(captureSessionOutputContainer, sessionOutput);
+
+    captureSessionStateCallbacks.onReady = capture_session_on_ready;
+    captureSessionStateCallbacks.onActive = capture_session_on_active;
+
+    ACameraDevice_createCaptureSession(cameraDevice, captureSessionOutputContainer,
+                                       &captureSessionStateCallbacks, &captureSession);
+
+    ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 1, &captureRequest, NULL);
 }
