@@ -117,9 +117,9 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
 
     ACaptureSessionOutputContainer_create(&captureSessionOutputContainer);
 
-    //ACameraMetadata_free(cameraMetadata);
-    //ACameraManager_deleteCameraIdList(cameraIdList);
-    //ACameraManager_delete(cameraManager);
+    ACameraMetadata_free(cameraMetadata);
+    ACameraManager_deleteCameraIdList(cameraIdList);
+    ACameraManager_delete(cameraManager);
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
