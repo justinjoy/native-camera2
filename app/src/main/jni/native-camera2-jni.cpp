@@ -31,11 +31,11 @@ static ACaptureRequest *captureRequest;
 
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
 
-static void camera_device_on_disconnected (void *context, ACameraDevice *device) {
+static void camera_device_on_disconnected(void *context, ACameraDevice *device) {
     LOGI("Camera(id: %s) is diconnected.\n", ACameraDevice_getId(device));
 }
 
-static void camera_device_on_error (void *context, ACameraDevice *device, int error) {
+static void camera_device_on_error(void *context, ACameraDevice *device, int error) {
     LOGE("Error(code: %d) on Camera(id: %s).\n", error, ACameraDevice_getId(device));
 }
 
@@ -43,7 +43,7 @@ extern "C" {
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCamera(JNIEnv *env,
                                                                                    jclass clazz);
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
-                                                                                   jclass clazz);
+                                                                                    jclass clazz);
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
                                                                                  jclass clazz);
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_setSurface(JNIEnv *env,
@@ -73,9 +73,11 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
 
     selectedCameraId = cameraIdList->cameraIds[0];
 
-    LOGI("Trying to open Camera2 (id: %s, num of camera : %d)\n", selectedCameraId, cameraIdList->numCameras);
+    LOGI("Trying to open Camera2 (id: %s, num of camera : %d)\n", selectedCameraId,
+         cameraIdList->numCameras);
 
-    camera_status = ACameraManager_getCameraCharacteristics(cameraManager, selectedCameraId, &cameraMetadata);
+    camera_status = ACameraManager_getCameraCharacteristics(cameraManager, selectedCameraId,
+                                                            &cameraMetadata);
 
     if (camera_status != ACAMERA_OK) {
         LOGE("Failed to get camera meta data of ID:%s\n", selectedCameraId);
@@ -84,7 +86,8 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
     deviceStateCallbacks.onDisconnected = camera_device_on_disconnected;
     deviceStateCallbacks.onError = camera_device_on_error;
 
-    camera_status = ACameraManager_openCamera(cameraManager, selectedCameraId, &deviceStateCallbacks, &cameraDevice);
+    camera_status = ACameraManager_openCamera(cameraManager, selectedCameraId,
+                                              &deviceStateCallbacks, &cameraDevice);
 
     if (camera_status != ACAMERA_OK) {
         LOGE("Failed to open camera device (id: %s)\n", selectedCameraId);
@@ -100,15 +103,17 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_openCame
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_closeCamera(JNIEnv *env,
                                                                                     jclass clazz) {
-    LOGI("Close Camera2\n");
-}
-
-JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
-                                                                                 jclass clazz) {
     if (captureRequest != NULL) {
         ACaptureRequest_free(captureRequest);
         captureRequest = NULL;
     }
+    LOGI("Close Camera2\n");
+
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_shutdown(JNIEnv *env,
+                                                                                 jclass clazz) {
+
 
     if (theNativeWindow != NULL) {
         ANativeWindow_release(theNativeWindow);

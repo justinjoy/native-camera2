@@ -49,12 +49,15 @@ public class NativeCamera2 extends Activity {
         super.onCreate(icicle);
         setContentView(R.layout.main);
 
+        openCamera();
+
         surfaceView = (SurfaceView) findViewById(R.id.surfaceview);
         surfaceHolder = surfaceView.getHolder();
 
         surfaceHolder.addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
+
                 Log.v(TAG, "surface created.");
                 setSurface(holder.getSurface());
             }
@@ -69,7 +72,6 @@ public class NativeCamera2 extends Activity {
             }
         });
 
-        openCamera();
     }
 
     @Override
