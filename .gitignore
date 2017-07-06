@@ -5,3 +5,4 @@ native-camera2.iml
 local.properties
 app/app.iml
 build/
+app/.externalNativeBuild
