@@ -16,14 +16,16 @@
  */
 package org.freedesktop.nativecamera2;
 
+import android.Manifest;
 import android.app.Activity;
-
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
-
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.os.Bundle;
+import android.widget.Toast;
 
 public class NativeCamera2 extends Activity {
 
@@ -48,6 +50,12 @@ public class NativeCamera2 extends Activity {
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
         setContentView(R.layout.main);
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+
+            Toast.makeText(this, "DENIED to access Camera", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         openCamera();
 
