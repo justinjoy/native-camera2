@@ -1,0 +1,7 @@
+.idea/
+app/build
+native-camera2.iml
+.gradle
+local.properties
+app/app.iml
+build/

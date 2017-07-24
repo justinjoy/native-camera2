@@ -10,4 +10,7 @@ Pre-requisites
 --------------
 - Android Studio 2.1+ with [NDK](https://developer.android.com/ndk/) (>=r12) bundle.
 
+Screenshots
+-----------
+![screenshot](screenshot.png)
 
