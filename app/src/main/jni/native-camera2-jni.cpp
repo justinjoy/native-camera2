@@ -144,6 +144,11 @@ static void closeCamera(void)
         cameraDevice = NULL;
     }
 
+    if (sessionOutput != NULL) {
+        ACaptureSessionOutput_free(sessionOutput);
+        sessionOutput = NULL;
+    }
+
     if (captureSessionOutputContainer != NULL) {
         ACaptureSessionOutputContainer_free(captureSessionOutputContainer);
         captureSessionOutputContainer = NULL;
