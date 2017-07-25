@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016, Collabora Ltd.
+ * Copyright (C) 2016-2017, Collabora Ltd.
  *   Author: Justin Kim <justin.kim@collabora.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,13 +31,9 @@ public class NativeCamera2 extends Activity {
 
     static final String TAG = "NativeCamera2";
 
-    public static native void openCamera();
+    public static native void startPreview(Surface surface);
 
-    public static native void closeCamera();
-
-    public static native void setSurface(Surface surface);
-
-    public static native void shutdown();
+    public static native void stopPreview();
 
     static {
         System.loadLibrary("native-camera2-jni");
@@ -57,8 +53,6 @@ public class NativeCamera2 extends Activity {
             return;
         }
 
-        openCamera();
-
         surfaceView = (SurfaceView) findViewById(R.id.surfaceview);
         surfaceHolder = surfaceView.getHolder();
 
@@ -67,11 +61,12 @@ public class NativeCamera2 extends Activity {
             public void surfaceCreated(SurfaceHolder holder) {
 
                 Log.v(TAG, "surface created.");
-                setSurface(holder.getSurface());
+                startPreview(holder.getSurface());
             }
 
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
+                stopPreview();
             }
 
             @Override
@@ -79,13 +74,11 @@ public class NativeCamera2 extends Activity {
                 Log.v(TAG, "format=" + format + " w/h : (" + width + ", " + height + ")");
             }
         });
-
     }
 
     @Override
     protected void onDestroy() {
-        closeCamera();
-        shutdown();
+        stopPreview();
         super.onDestroy();
     }
 }
