@@ -60,6 +60,11 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPrev
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startPreview(JNIEnv *env,
                                                                                      jclass clazz,
                                                                                      jobject surface);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopRecording(JNIEnv *env,
+                                                                                      jclass clazz);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRecording(JNIEnv *env,
+                                                                                       jclass clazz,
+                                                                                       jobject surface);
 }
 
 static void openCamera(ACameraDevice_request_template templateId)
@@ -185,4 +190,15 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPrev
         ANativeWindow_release(theNativeWindow);
         theNativeWindow = NULL;
     }
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopRecording(JNIEnv *env,
+                                                                                      jclass clazz)
+{
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRecording(JNIEnv *env,
+                                                                                       jclass clazz,
+                                                                                       jobject surface)
+{
 }

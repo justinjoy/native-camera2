@@ -25,6 +25,7 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.Toast;
 
 public class NativeCamera2 extends Activity {
@@ -34,6 +35,12 @@ public class NativeCamera2 extends Activity {
     public static native void startPreview(Surface surface);
 
     public static native void stopPreview();
+
+    public static native void startRecording(Surface surface);
+
+    public static native void stopRecording();
+
+    private boolean recording = false;
 
     static {
         System.loadLibrary("native-camera2-jni");
@@ -72,6 +79,28 @@ public class NativeCamera2 extends Activity {
             @Override
             public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
                 Log.v(TAG, "format=" + format + " w/h : (" + width + ", " + height + ")");
+            }
+        });
+
+        surfaceView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                recording = !recording;
+
+                String message;
+                if (recording) {
+                    stopPreview();
+                    startRecording(surfaceHolder.getSurface());
+
+                    message = "Start recording";
+                } else {
+                    stopRecording();
+                    startPreview(surfaceHolder.getSurface());
+                    
+                    message = "Stop recording";
+                }
+
+                Toast.makeText(NativeCamera2.this, message, Toast.LENGTH_LONG).show();
             }
         });
     }
