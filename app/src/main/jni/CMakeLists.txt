@@ -6,4 +6,5 @@ add_library(native-camera2-jni SHARED
 target_link_libraries(native-camera2-jni
                       android
                       log
-                      camera2ndk)
+                      camera2ndk
+                      mediandk)

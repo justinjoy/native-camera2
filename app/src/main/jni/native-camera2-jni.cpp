@@ -24,6 +24,8 @@
 #include <camera/NdkCameraDevice.h>
 #include <camera/NdkCameraManager.h>
 
+#include <media/NdkImageReader.h>
+
 #include "messages-internal.h"
 
 static ANativeWindow *theNativeWindow;
@@ -33,6 +35,11 @@ static ACameraOutputTarget *cameraOutputTarget;
 static ACaptureSessionOutput *sessionOutput;
 static ACaptureSessionOutputContainer *captureSessionOutputContainer;
 static ACameraCaptureSession *captureSession;
+static AImageReader *imageReader;
+static ANativeWindow *imageReaderWindow;
+static ACameraOutputTarget *imageReaderOutputTarget;
+static ACaptureSessionOutput *imageReaderSessionOutput;
+static AImageReader_ImageListener imageReaderListener;
 
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
 static ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks;
@@ -195,10 +202,87 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPrev
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopRecording(JNIEnv *env,
                                                                                       jclass clazz)
 {
+    if (imageReaderSessionOutput != NULL) {
+        ACaptureSessionOutput_free(imageReaderSessionOutput);
+        imageReaderSessionOutput = NULL;
+    }
+
+    if (imageReaderOutputTarget != NULL) {
+        ACameraOutputTarget_free(imageReaderOutputTarget);
+        imageReaderOutputTarget = NULL;
+    }
+
+    AImageReader_delete(imageReader);
+
+    closeCamera();
+
+    if (theNativeWindow != NULL) {
+        ANativeWindow_release(theNativeWindow);
+        theNativeWindow = NULL;
+    }
+}
+
+static void image_reader_on_image_available(void *context,
+                                            AImageReader *reader)
+{
+    media_status_t media_status;
+    AImage *image = NULL;
+
+    media_status = AImageReader_acquireLatestImage(reader, &image);
+    if (media_status != AMEDIA_OK) {
+        LOGI("No image available.");
+        return;
+    }
+
+   LOGI("on image available");
+   AImage_delete(image);
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRecording(JNIEnv *env,
                                                                                        jclass clazz,
                                                                                        jobject surface)
 {
+    int32_t width, height;
+    media_status_t media_status;
+
+    theNativeWindow = ANativeWindow_fromSurface(env, surface);
+
+    width = ANativeWindow_getWidth(theNativeWindow);
+    height = ANativeWindow_getHeight(theNativeWindow);
+
+    LOGI("Setting ImageReader (w: %d, h: %d)\n", width, height);
+
+    AImageReader_new(width, height,
+                     AIMAGE_FORMAT_YUV_420_888,
+                     5, /* maxImages */
+                     &imageReader);
+
+    media_status = AImageReader_getWindow(imageReader, &imageReaderWindow);
+    if (media_status != AMEDIA_OK) {
+       LOGE("Failed to get a native window from image reader.");
+       return;
+    }
+
+    imageReaderListener.onImageAvailable = image_reader_on_image_available;
+    AImageReader_setImageListener(imageReader, &imageReaderListener);
+
+    openCamera(TEMPLATE_STILL_CAPTURE);
+
+    ACameraOutputTarget_create(theNativeWindow, &cameraOutputTarget);
+    ACaptureRequest_addTarget(captureRequest, cameraOutputTarget);
+
+    ACameraOutputTarget_create(imageReaderWindow, &imageReaderOutputTarget);
+    ACaptureRequest_addTarget(captureRequest, imageReaderOutputTarget);
+
+    ACaptureSessionOutput_create(theNativeWindow, &sessionOutput);
+    ACaptureSessionOutputContainer_add(captureSessionOutputContainer, sessionOutput);
+
+    ACaptureSessionOutput_create(imageReaderWindow, &imageReaderSessionOutput);
+    ACaptureSessionOutputContainer_add(captureSessionOutputContainer, imageReaderSessionOutput);
+
+    ACameraDevice_createCaptureSession(cameraDevice, captureSessionOutputContainer,
+                                       &captureSessionStateCallbacks, &captureSession);
+
+    ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 1, &captureRequest, NULL);
+
 }
