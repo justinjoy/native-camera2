@@ -113,6 +113,9 @@ static void openCamera(ACameraDevice_request_template templateId)
 
     ACaptureSessionOutputContainer_create(&captureSessionOutputContainer);
 
+    captureSessionStateCallbacks.onReady = capture_session_on_ready;
+    captureSessionStateCallbacks.onActive = capture_session_on_active;
+
     ACameraMetadata_free(cameraMetadata);
     ACameraManager_deleteCameraIdList(cameraIdList);
     ACameraManager_delete(cameraManager);
@@ -152,37 +155,22 @@ static void closeCamera(void)
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startPreview(JNIEnv *env,
                                                                                      jclass clazz,
                                                                                      jobject surface) {
-    openCamera(TEMPLATE_PREVIEW);
-
     theNativeWindow = ANativeWindow_fromSurface(env, surface);
 
-    LOGI("Surface is prepared in %p.\n", surface);
+    openCamera(TEMPLATE_PREVIEW);
 
-    if (cameraOutputTarget != NULL) {
-        ACameraOutputTarget_free(cameraOutputTarget);
-        cameraOutputTarget = NULL;
-    }
+    LOGI("Surface is prepared in %p.\n", surface);
 
     ACameraOutputTarget_create(theNativeWindow, &cameraOutputTarget);
     ACaptureRequest_addTarget(captureRequest, cameraOutputTarget);
 
-    if (sessionOutput != NULL) {
-        ACaptureSessionOutputContainer_remove(captureSessionOutputContainer, sessionOutput);
-        ACaptureSessionOutput_free(sessionOutput);
-        sessionOutput = NULL;
-    }
-
     ACaptureSessionOutput_create(theNativeWindow, &sessionOutput);
     ACaptureSessionOutputContainer_add(captureSessionOutputContainer, sessionOutput);
-
-    captureSessionStateCallbacks.onReady = capture_session_on_ready;
-    captureSessionStateCallbacks.onActive = capture_session_on_active;
 
     ACameraDevice_createCaptureSession(cameraDevice, captureSessionOutputContainer,
                                        &captureSessionStateCallbacks, &captureSession);
 
     ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 1, &captureRequest, NULL);
-
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPreview(JNIEnv *env,
