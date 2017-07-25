@@ -146,7 +146,7 @@ static void closeCamera(void)
         captureSessionOutputContainer = NULL;
     }
 
-    LOGI("Close Camera2\n");
+    LOGI("Close Camera\n");
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startPreview(JNIEnv *env,
