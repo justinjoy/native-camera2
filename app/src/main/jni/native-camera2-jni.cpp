@@ -25,6 +25,7 @@
 #include <camera/NdkCameraManager.h>
 
 #include <media/NdkImageReader.h>
+#include <media/NdkMediaCodec.h>
 
 #include "messages-internal.h"
 
@@ -40,6 +41,7 @@ static ANativeWindow *imageReaderWindow;
 static ACameraOutputTarget *imageReaderOutputTarget;
 static ACaptureSessionOutput *imageReaderSessionOutput;
 static AImageReader_ImageListener imageReaderListener;
+static AMediaCodec *mediaCodec;
 
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
 static ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks;
@@ -202,6 +204,12 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPrev
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopRecording(JNIEnv *env,
                                                                                       jclass clazz)
 {
+    if (mediaCodec != NULL) {
+        AMediaCodec_stop(mediaCodec);
+        AMediaCodec_delete(mediaCodec);
+        mediaCodec = NULL;
+    }
+
     if (imageReaderSessionOutput != NULL) {
         ACaptureSessionOutput_free(imageReaderSessionOutput);
         imageReaderSessionOutput = NULL;
@@ -234,7 +242,24 @@ static void image_reader_on_image_available(void *context,
         return;
     }
 
-   LOGI("on image available");
+   size_t bufferSize = 0;
+   int idx = AMediaCodec_dequeueInputBuffer(mediaCodec, -1);
+   uint8_t *inputBuffer = AMediaCodec_getInputBuffer(mediaCodec, idx, &bufferSize);
+
+   LOGI("dequeue input buffer (size: %u)", bufferSize);
+   int dataSize = 0;
+   AImage_getPlaneData(image, 0, &inputBuffer, &dataSize);
+   LOGI("copying image buffer (size: %d)", dataSize);
+
+   int64_t timestamp = 0;
+   AImage_getTimestamp(image, &timestamp);
+   AMediaCodec_queueInputBuffer(mediaCodec, idx, 0, dataSize, timestamp, 0);
+
+   AMediaCodecBufferInfo bufferInfo;
+   idx = AMediaCodec_dequeueOutputBuffer(mediaCodec, &bufferInfo, -1);
+
+   AMediaCodec_releaseOutputBuffer(mediaCodec, idx, true);
+
    AImage_delete(image);
 }
 
@@ -247,8 +272,8 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRec
 
     theNativeWindow = ANativeWindow_fromSurface(env, surface);
 
-    width = ANativeWindow_getWidth(theNativeWindow);
-    height = ANativeWindow_getHeight(theNativeWindow);
+    width = 640; //ANativeWindow_getWidth(theNativeWindow);
+    height = 480; //ANativeWindow_getHeight(theNativeWindow);
 
     LOGI("Setting ImageReader (w: %d, h: %d)\n", width, height);
 
@@ -265,6 +290,26 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRec
 
     imageReaderListener.onImageAvailable = image_reader_on_image_available;
     AImageReader_setImageListener(imageReader, &imageReaderListener);
+
+    mediaCodec = AMediaCodec_createEncoderByType("video/avc");
+
+    AMediaFormat *mediaFormat = AMediaFormat_new();
+
+    /** These are mandatory to configure mediacodec. */
+    AMediaFormat_setString(mediaFormat, AMEDIAFORMAT_KEY_MIME, "video/avc");
+    AMediaFormat_setInt32(mediaFormat, AMEDIAFORMAT_KEY_BIT_RATE, 125000);
+    AMediaFormat_setFloat(mediaFormat, AMEDIAFORMAT_KEY_FRAME_RATE, 15.0);
+    AMediaFormat_setInt32(mediaFormat, AMEDIAFORMAT_KEY_I_FRAME_INTERVAL, 5);
+    AMediaFormat_setInt32(mediaFormat, AMEDIAFORMAT_KEY_WIDTH, width);
+    AMediaFormat_setInt32(mediaFormat, AMEDIAFORMAT_KEY_HEIGHT, height);
+    AMediaFormat_setInt32(mediaFormat, AMEDIAFORMAT_KEY_COLOR_FORMAT, 0x7f420888 /* COLOR_FormatYUV420Flexible */);
+
+    media_status = AMediaCodec_configure(mediaCodec, mediaFormat, NULL, NULL, AMEDIACODEC_CONFIGURE_FLAG_ENCODE); 
+    if (media_status != AMEDIA_OK) {
+        LOGE("Failed to configure media codec(return code: %x)", media_status);
+    }
+
+    AMediaFormat_delete(mediaFormat);
 
     openCamera(TEMPLATE_STILL_CAPTURE);
 
@@ -285,4 +330,5 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRec
 
     ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 1, &captureRequest, NULL);
 
+    AMediaCodec_start(mediaCodec);
 }
