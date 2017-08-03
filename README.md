@@ -1,8 +1,8 @@
 Hello Camera2
 =============
-Hello Camera2 is an Android Camera2 sample that takes a snapshot using libcamera2ndk.
+Hello Camera2 is an Android Camera2 sample that plays preview.
 
-It uses JNI to access camera2 APIs which recently becomes one of 
+It controls camera devices by NDK camera2 APIs which becomes one of 
 [public libraries](http://android-developers.blogspot.kr/2016/06/improving-stability-with-private-cc.html)
 in Android N.
 
