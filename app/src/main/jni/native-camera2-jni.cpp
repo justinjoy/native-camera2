@@ -26,6 +26,7 @@
 
 #include <media/NdkImageReader.h>
 #include <media/NdkMediaCodec.h>
+#include <media/NdkMediaMuxer.h>
 
 #include "messages-internal.h"
 
@@ -42,6 +43,9 @@ static ACameraOutputTarget *imageReaderOutputTarget;
 static ACaptureSessionOutput *imageReaderSessionOutput;
 static AImageReader_ImageListener imageReaderListener;
 static AMediaCodec *mediaCodec;
+static AMediaMuxer *mediaMuxer;
+static ssize_t tidx = -1;
+static pthread_mutex_t lock;
 
 static ACameraDevice_StateCallbacks deviceStateCallbacks;
 static ACameraCaptureSession_stateCallbacks captureSessionStateCallbacks;
@@ -73,6 +77,7 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopReco
                                                                                       jclass clazz);
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRecording(JNIEnv *env,
                                                                                        jclass clazz,
+                                                                                       int fd,
                                                                                        jobject surface);
 }
 
@@ -210,6 +215,11 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopReco
         mediaCodec = NULL;
     }
 
+    if (mediaMuxer != NULL) {
+       AMediaMuxer_stop(mediaMuxer);
+       AMediaMuxer_delete(mediaMuxer);
+    }
+
     if (imageReaderSessionOutput != NULL) {
         ACaptureSessionOutput_free(imageReaderSessionOutput);
         imageReaderSessionOutput = NULL;
@@ -228,7 +238,10 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopReco
         ANativeWindow_release(theNativeWindow);
         theNativeWindow = NULL;
     }
+
+    pthread_mutex_destroy(&lock);
 }
+
 
 static void image_reader_on_image_available(void *context,
                                             AImageReader *reader)
@@ -243,9 +256,10 @@ static void image_reader_on_image_available(void *context,
     }
 
    size_t bufferSize = 0;
-   int idx = AMediaCodec_dequeueInputBuffer(mediaCodec, -1);
-   uint8_t *inputBuffer = AMediaCodec_getInputBuffer(mediaCodec, idx, &bufferSize);
+   int inputBufferIdx = AMediaCodec_dequeueInputBuffer(mediaCodec, -1);
+   uint8_t *inputBuffer = AMediaCodec_getInputBuffer(mediaCodec, inputBufferIdx, &bufferSize);
 
+   if (inputBufferIdx >= 0) {
    LOGI("dequeue input buffer (size: %u)", bufferSize);
    int dataSize = 0;
    AImage_getPlaneData(image, 0, &inputBuffer, &dataSize);
@@ -253,24 +267,55 @@ static void image_reader_on_image_available(void *context,
 
    int64_t timestamp = 0;
    AImage_getTimestamp(image, &timestamp);
-   AMediaCodec_queueInputBuffer(mediaCodec, idx, 0, dataSize, timestamp, 0);
+
+   AMediaCodec_queueInputBuffer(mediaCodec, inputBufferIdx, 0, bufferSize, timestamp, 0);
+   }
 
    AMediaCodecBufferInfo bufferInfo;
-   idx = AMediaCodec_dequeueOutputBuffer(mediaCodec, &bufferInfo, -1);
+   int idx = AMediaCodec_dequeueOutputBuffer(mediaCodec, &bufferInfo, -1);
 
-   AMediaCodec_releaseOutputBuffer(mediaCodec, idx, true);
+   LOGI("dequeue output buffer idx: %d", idx);
+
+   if (idx == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED) {
+       AMediaFormat *format = AMediaCodec_getOutputFormat(mediaCodec);
+
+       tidx = AMediaMuxer_addTrack(mediaMuxer, format);
+       LOGI("added track tidx: %d (format: %s)", tidx, AMediaFormat_toString(format));
+
+       AMediaMuxer_start(mediaMuxer);
+       AMediaFormat_delete(format);
+
+   } else if (idx >= 0) {
+
+     uint8_t *outputBuffer = AMediaCodec_getOutputBuffer(mediaCodec, idx, &bufferSize);
+
+     if (tidx >= 0 && bufferInfo.size > 0) {
+       pthread_mutex_lock(&lock);
+
+       LOGI("sending buffer to tidx: %d ptr: %p (info->offset: %d, info->size: %d)", tidx, outputBuffer, bufferInfo.offset, bufferInfo.size);
+       AMediaMuxer_writeSampleData(mediaMuxer, tidx, outputBuffer, &bufferInfo);
+
+       pthread_mutex_unlock(&lock);
+     }
+
+     AMediaCodec_releaseOutputBuffer(mediaCodec, idx, false);
+   }
 
    AImage_delete(image);
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRecording(JNIEnv *env,
                                                                                        jclass clazz,
+                                                                                       int fd,
                                                                                        jobject surface)
 {
     int32_t width, height;
     media_status_t media_status;
 
+    pthread_mutex_init(&lock, NULL);
+
     theNativeWindow = ANativeWindow_fromSurface(env, surface);
+    mediaMuxer = AMediaMuxer_new(fd, AMEDIAMUXER_OUTPUT_FORMAT_MPEG_4);
 
     width = 640; //ANativeWindow_getWidth(theNativeWindow);
     height = 480; //ANativeWindow_getHeight(theNativeWindow);
@@ -308,6 +353,7 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startRec
     if (media_status != AMEDIA_OK) {
         LOGE("Failed to configure media codec(return code: %x)", media_status);
     }
+
 
     AMediaFormat_delete(mediaFormat);
 

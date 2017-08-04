@@ -20,6 +20,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Surface;
@@ -27,6 +28,12 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 public class NativeCamera2 extends Activity {
 
@@ -36,7 +43,7 @@ public class NativeCamera2 extends Activity {
 
     public static native void stopPreview();
 
-    public static native void startRecording(Surface surface);
+    public static native void startRecording(int fd, Surface surface);
 
     public static native void stopRecording();
 
@@ -90,13 +97,27 @@ public class NativeCamera2 extends Activity {
                 String message;
                 if (recording) {
                     stopPreview();
-                    startRecording(surfaceHolder.getSurface());
 
-                    message = "Start recording";
+                    File base = NativeCamera2.this.getExternalFilesDir(null);
+                    DateFormat df = new SimpleDateFormat("yyyyMMdd-HH:mm:ss");
+                    String recFile = base.getPath() + "/video-" + df.format(Calendar.getInstance().getTime()) + ".mp4";
+
+                    try {
+                        ParcelFileDescriptor out
+                                = ParcelFileDescriptor.open(new File(recFile),
+                                ParcelFileDescriptor.MODE_READ_WRITE | ParcelFileDescriptor.MODE_CREATE);
+
+                        startRecording(out.getFd(), surfaceHolder.getSurface());
+                        
+                        message = "Start recording - " + recFile;
+                    } catch (FileNotFoundException e) {
+                        message = e.getMessage();
+                    }
+
                 } else {
                     stopRecording();
                     startPreview(surfaceHolder.getSurface());
-                    
+
                     message = "Stop recording";
                 }
 
