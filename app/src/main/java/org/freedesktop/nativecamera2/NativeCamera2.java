@@ -20,6 +20,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Surface;
@@ -30,6 +31,8 @@ import android.widget.Toast;
 public class NativeCamera2 extends Activity {
 
     static final String TAG = "NativeCamera2";
+
+    private static final int PERMISSION_REQUEST_CAMERA = 1;
 
     public static native void startPreview(Surface surface);
 
@@ -49,7 +52,10 @@ public class NativeCamera2 extends Activity {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
 
-            Toast.makeText(this, "DENIED to access Camera", Toast.LENGTH_LONG).show();
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[] { Manifest.permission.CAMERA },
+                    PERMISSION_REQUEST_CAMERA);
             return;
         }
 
