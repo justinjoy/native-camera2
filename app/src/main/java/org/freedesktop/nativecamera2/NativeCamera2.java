@@ -23,10 +23,12 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.Toast;
+import android.view.View;
+import android.view.ViewGroup;
 
 public class NativeCamera2 extends Activity {
 
@@ -38,12 +40,23 @@ public class NativeCamera2 extends Activity {
 
     public static native void stopPreview();
 
+    public static native void startExtraView(Surface surface);
+
+    public static native void stopExtraView();
+
+    LayoutInflater extraViewLayoutInflater = null;
+
+    boolean isBurstModeOn = false;
+
     static {
         System.loadLibrary("native-camera2-jni");
     }
 
     SurfaceView surfaceView;
     SurfaceHolder surfaceHolder;
+
+    SurfaceView extraView;
+    SurfaceHolder extraViewHolder;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -80,6 +93,51 @@ public class NativeCamera2 extends Activity {
                 Log.v(TAG, "format=" + format + " w/h : (" + width + ", " + height + ")");
             }
         });
+
+
+        extraViewLayoutInflater = LayoutInflater.from(getBaseContext());
+
+        View view = extraViewLayoutInflater.inflate(R.layout.extraviewlayout, null);
+        ViewGroup.LayoutParams layoutParamsControl
+                = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        this.addContentView(view, layoutParamsControl);
+
+        extraView = (SurfaceView) findViewById(R.id.extraview);
+        extraView.setVisibility(View.INVISIBLE);
+
+        extraViewHolder = extraView.getHolder();
+        extraViewHolder.addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                startExtraView(extraViewHolder.getSurface());
+
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+                stopExtraView();
+            }
+        });
+
+        surfaceView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isBurstModeOn = !isBurstModeOn;
+
+                if (isBurstModeOn) {
+                    extraView.setVisibility(View.VISIBLE);
+                } else {
+                    extraView.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
     }
 
     @Override
@@ -87,4 +145,6 @@ public class NativeCamera2 extends Activity {
         stopPreview();
         super.onDestroy();
     }
+
+
 }

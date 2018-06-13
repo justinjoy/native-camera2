@@ -12,5 +12,11 @@ Pre-requisites
 
 Screenshots
 -----------
+
+A small extra view is toggled when a screen is touched.
+
 ![screenshot](screenshot.png)
 
+Known Bugs
+----------
+ * When extra surface view is changed, App is crashed. (e.g when switching portrait to landscape mode, vice versa)

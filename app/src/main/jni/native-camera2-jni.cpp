@@ -60,6 +60,11 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPrev
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startPreview(JNIEnv *env,
                                                                                      jclass clazz,
                                                                                      jobject surface);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopExtraView(JNIEnv *env,
+                                                                                    jclass clazz);
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startExtraView(JNIEnv *env,
+                                                                                     jclass clazz,
+                                                                                     jobject surface);
 }
 
 static void openCamera(ACameraDevice_request_template templateId)
@@ -176,6 +181,7 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startPre
                                        &captureSessionStateCallbacks, &captureSession);
 
     ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 1, &captureRequest, NULL);
+
 }
 
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPreview(JNIEnv *env,
@@ -184,5 +190,63 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPrev
     if (theNativeWindow != NULL) {
         ANativeWindow_release(theNativeWindow);
         theNativeWindow = NULL;
+    }
+}
+
+static ANativeWindow *extraViewWindow;
+static ACaptureRequest *extraViewCaptureRequest;
+static ACameraOutputTarget *extraViewOutputTarget;
+static ACaptureSessionOutput *extraViewSessionOutput;
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startExtraView(JNIEnv *env,
+                                                                                       jclass clazz,
+                                                                                       jobject surface) {
+
+    /* Assuming that camera preview has already been started */
+    extraViewWindow = ANativeWindow_fromSurface(env, surface);
+
+    LOGI("Extra view surface is prepared in %p.\n", surface);
+
+    ACameraDevice_createCaptureRequest(cameraDevice, TEMPLATE_STILL_CAPTURE,
+                                       &extraViewCaptureRequest);
+
+    ACameraOutputTarget_create(extraViewWindow, &extraViewOutputTarget);
+    ACaptureRequest_addTarget(extraViewCaptureRequest, extraViewOutputTarget);
+
+    ACaptureSessionOutput_create(extraViewWindow, &extraViewSessionOutput);
+    ACaptureSessionOutputContainer_add(captureSessionOutputContainer,
+                                       extraViewSessionOutput);
+    ACameraCaptureSession_stopRepeating(captureSession);
+
+    ACameraDevice_createCaptureSession(cameraDevice, captureSessionOutputContainer,
+                                       &captureSessionStateCallbacks, &captureSession);
+
+    ACaptureRequest *requests[2];
+    requests[0] = captureRequest;
+    requests[1] = extraViewCaptureRequest;
+
+    ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 2, requests, NULL);
+}
+
+JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopExtraView(JNIEnv *env,
+                                                                                      jclass clazz) {
+
+    ACameraCaptureSession_stopRepeating(captureSession);
+
+    ACaptureSessionOutputContainer_remove(captureSessionOutputContainer, extraViewSessionOutput);
+
+    ACaptureRequest_removeTarget(extraViewCaptureRequest, extraViewOutputTarget);
+
+    ACameraOutputTarget_free(extraViewOutputTarget);
+    ACaptureSessionOutput_free(extraViewSessionOutput);
+    ACaptureRequest_free(extraViewCaptureRequest);
+
+    ACameraCaptureSession_setRepeatingRequest(captureSession, NULL, 1, &captureRequest, NULL);
+
+    if (extraViewWindow != NULL) {
+        ANativeWindow_release(extraViewWindow);
+        extraViewWindow = NULL;
+        LOGI("Extra view surface is released\n");
+
     }
 }
