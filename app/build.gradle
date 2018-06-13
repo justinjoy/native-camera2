@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "26.0.0"
+    buildToolsVersion "27.0.3"
 
     defaultConfig {
         applicationId 'org.freedesktop.nativecamera2'
@@ -10,7 +10,7 @@ android {
         targetSdkVersion 24
 
         ndk {
-            abiFilters 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'arm64-v8a'
+            abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
         }
     }
 
@@ -29,5 +29,5 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-v4:24.+'
+    api 'com.android.support:support-v4:24.+'
 }
