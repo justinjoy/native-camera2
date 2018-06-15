@@ -46,13 +46,16 @@ static void camera_device_on_error(void *context, ACameraDevice *device, int err
 }
 
 static void capture_session_on_ready(void *context, ACameraCaptureSession *session) {
-    LOGI("Session is ready.\n");
+    LOGI("Session is ready. %p\n", session);
 }
 
 static void capture_session_on_active(void *context, ACameraCaptureSession *session) {
-    LOGI("Session is activated.\n");
+    LOGI("Session is activated. %p\n", session);
 }
 
+static void capture_session_on_closed(void *context, ACameraCaptureSession *session) {
+    LOGI("Session is closed. %p\n", session);
+}
 
 extern "C" {
 JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_stopPreview(JNIEnv *env,
@@ -120,6 +123,7 @@ static void openCamera(ACameraDevice_request_template templateId)
 
     captureSessionStateCallbacks.onReady = capture_session_on_ready;
     captureSessionStateCallbacks.onActive = capture_session_on_active;
+    captureSessionStateCallbacks.onClosed = capture_session_on_closed;
 
     ACameraMetadata_free(cameraMetadata);
     ACameraManager_deleteCameraIdList(cameraIdList);
@@ -206,6 +210,7 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startExt
     extraViewWindow = ANativeWindow_fromSurface(env, surface);
 
     LOGI("Extra view surface is prepared in %p.\n", surface);
+    ACameraCaptureSession_stopRepeating(captureSession);
 
     ACameraDevice_createCaptureRequest(cameraDevice, TEMPLATE_STILL_CAPTURE,
                                        &extraViewCaptureRequest);
@@ -216,8 +221,10 @@ JNIEXPORT void JNICALL Java_org_freedesktop_nativecamera2_NativeCamera2_startExt
     ACaptureSessionOutput_create(extraViewWindow, &extraViewSessionOutput);
     ACaptureSessionOutputContainer_add(captureSessionOutputContainer,
                                        extraViewSessionOutput);
-    ACameraCaptureSession_stopRepeating(captureSession);
 
+    /* Not sure why the session should be recreated.
+     * Otherwise, the session state goes to ready */
+    ACameraCaptureSession_close(captureSession);
     ACameraDevice_createCaptureSession(cameraDevice, captureSessionOutputContainer,
                                        &captureSessionStateCallbacks, &captureSession);
 
