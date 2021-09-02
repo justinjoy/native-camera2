@@ -1,3 +1,5 @@
+*This repo is unmaintained and archived*
+
 Hello Camera2
 =============
 Hello Camera2 is an Android Camera2 sample that plays preview.
